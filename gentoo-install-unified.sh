@@ -454,6 +454,7 @@ EOF
 
     # Copy this script to chroot
     SCRIPT_PATH="$(readlink -f "$0")"
+    mkdir -p "$TARGET/root"
     cp "$SCRIPT_PATH" "$TARGET/root/gentoo-install-unified.sh"
     chmod +x "$TARGET/root/gentoo-install-unified.sh"
 
