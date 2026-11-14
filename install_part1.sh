@@ -151,7 +151,7 @@ check_requirements
 
 echo
 echo "Available block devices:"
-lsblk -e7 -o NAME,SIZE,TYPE,FSTYPE,FSVER,LABEL,MOUNTPOINTS,MODEL
+lsblk -e7 -o NAME,SIZE,TYPE,FSTYPE,LABEL,MOUNTPOINTS,MODEL
 
 echo
 read -r -p "Installation disk (e.g. /dev/nvme0n1 or /dev/sda): " DISK

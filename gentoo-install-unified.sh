@@ -462,14 +462,14 @@ EOF
 
     # Save state
     cat > "$STATE_FILE" <<EOF
-PHASE="chroot"
+PHASE=chroot
 DISK="$DISK"
 PROFILE="$PROFILE"
 INIT="$INIT"
 GPU="$GPU"
 KERNEL_TYPE="$KERNEL_TYPE"
 EOF
-    cp "$STATE_FILE" "$TARGET/tmp/"
+    cp "$STATE_FILE" "$TARGET/tmp/" 2>/dev/null || true
 
     print_header "PHASE 1 COMPLETE"
 
@@ -574,7 +574,7 @@ EOF
     case "$GPU" in
         NVIDIA)
             cat > /etc/portage/package.use/00-video_cards <<'EOF'
-*/* VIDEO_CARDS: -* nvidia
+*/* VIDEO_CARDS=-* VIDEO_CARDS=nvidia
 EOF
 
             cat > /etc/portage/package.use/10-nvidia <<'EOF'
@@ -583,7 +583,7 @@ EOF
             ;;
         AMD)
             cat > /etc/portage/package.use/00-video_cards <<'EOF'
-*/* VIDEO_CARDS: -* amdgpu radeonsi
+*/* VIDEO_CARDS=-* VIDEO_CARDS=amdgpu VIDEO_CARDS=radeonsi
 EOF
 
             cat > /etc/portage/package.use/10-amd <<'EOF'
@@ -594,7 +594,7 @@ EOF
             ;;
         Intel)
             cat > /etc/portage/package.use/00-video_cards <<'EOF'
-*/* VIDEO_CARDS: -* intel iris
+*/* VIDEO_CARDS=-* VIDEO_CARDS=intel VIDEO_CARDS=iris
 EOF
 
             cat > /etc/portage/package.use/10-intel <<'EOF'
@@ -632,7 +632,7 @@ EOF
     # ================================
 
     echo "Syncing Portage tree..."
-    emerge --sync
+    emerge --sync --quiet || die "Failed to sync Portage tree"
 
     if [[ "$INIT" == systemd ]]; then
         PROFILE_TARGET="default/linux/amd64/23.0/desktop/systemd"
@@ -651,11 +651,11 @@ EOF
     echo "Installing eselect-repository..."
     portage_emerge app-eselect/eselect-repository
 
-    eselect repository enable guru
+    eselect repository enable guru || echo "[WARN] Failed to enable GURU repository"
     emaint sync -r guru || true
 
     if [[ "$PROFILE" == gentoo_hyprland ]]; then
-        eselect repository enable hyproverlay
+        eselect repository enable hyproverlay || echo "[WARN] Failed to enable hyproverlay"
         emaint sync -r hyproverlay || true
         cat > /etc/portage/package.accept_keywords/hyproverlay <<'EOF'
 */*::hyproverlay
@@ -719,7 +719,11 @@ EOF
 
     cat > /etc/hosts <<EOF
 127.0.0.1   $HOSTNAME localhost
-::1         $HOSTNAME localhost
+::1         $HOSTNAME localhost ip6-localhost ip6-loopback
+fe00::0     ip6-localnet
+ff00::0     ip6-mcastprefix
+ff02::1     ip6-allnodes
+ff02::2     ip6-allrouters
 EOF
 
     if [[ "$INIT" == systemd ]]; then
@@ -900,7 +904,7 @@ EOF
     # ================================
 
     print_section "Final System Rebuild"
-    portage_emerge @world || true
+    portage_emerge @world || die "Failed to rebuild @world"
 
     # ================================
     # GRUB
@@ -908,9 +912,11 @@ EOF
 
     print_section "Installing Bootloader"
 
-    portage_emerge sys-boot/grub
-    grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=Gentoo --recheck
-    grub-mkconfig -o /boot/grub/grub.cfg
+    portage_emerge sys-boot/grub || die "Failed to install GRUB"
+    grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=Gentoo --recheck \
+        || die "Failed to install GRUB"
+    grub-mkconfig -o /boot/grub/grub.cfg \
+        || die "Failed to generate GRUB config"
 
     # ================================
     # Summary

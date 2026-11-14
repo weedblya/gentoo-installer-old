@@ -154,7 +154,7 @@ case "$GPU" in
     NVIDIA)
         cat > /etc/portage/package.use/00-video_cards <<'EOF'
 # NVIDIA drivers
-*/* VIDEO_CARDS: -* nvidia
+*/* VIDEO_CARDS=-* VIDEO_CARDS=nvidia
 EOF
 
         cat > /etc/portage/package.use/10-nvidia <<'EOF'
@@ -165,7 +165,7 @@ EOF
     AMD)
         cat > /etc/portage/package.use/00-video_cards <<'EOF'
 # AMD drivers
-*/* VIDEO_CARDS: -* amdgpu radeonsi
+*/* VIDEO_CARDS=-* VIDEO_CARDS=amdgpu VIDEO_CARDS=radeonsi
 EOF
 
         cat > /etc/portage/package.use/10-amd <<'EOF'
@@ -177,7 +177,7 @@ EOF
     Intel)
         cat > /etc/portage/package.use/00-video_cards <<'EOF'
 # Intel drivers
-*/* VIDEO_CARDS: -* intel iris
+*/* VIDEO_CARDS=-* VIDEO_CARDS=intel VIDEO_CARDS=iris
 EOF
 
         cat > /etc/portage/package.use/10-intel <<'EOF'
@@ -247,7 +247,7 @@ esac
 
 echo
 echo "Syncing Portage tree (this may take several minutes)..."
-emerge --sync || die "Failed to sync Portage tree"
+emerge --sync --quiet || die "Failed to sync Portage tree"
 
 # ============================================
 # Select Gentoo profile
@@ -780,7 +780,7 @@ echo "Rebuilding @world with new USE flags and profile..."
 echo "This ensures all packages are properly configured..."
 echo
 
-portage_emerge @world || echo "[WARN] World rebuild had some issues"
+portage_emerge @world || die "Failed to rebuild @world"
 
 # ============================================
 # Bootloader installation
