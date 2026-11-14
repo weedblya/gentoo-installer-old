@@ -567,7 +567,7 @@ EOF
     cat > /etc/portage/make.conf/00-installer <<EOF
 MAKEOPTS="-j${JOBS}"
 GRUB_PLATFORMS="efi-64"
-FEATURES="\${FEATURES-} getbinpkg binpkg-request-signature"
+FEATURES="\${FEATURES:-} getbinpkg binpkg-request-signature"
 USE="pulseaudio alsa bluetooth wifi networkmanager dbus policykit"
 EOF
 
@@ -650,7 +650,7 @@ EOF
     # ================================
 
     echo "Installing eselect-repository..."
-    portage_emerge app-eselect/eselect-repository
+    portage_emerge app-eselect/eselect-repository || die "Failed to install eselect-repository"
 
     eselect repository enable guru || echo "[WARN] Failed to enable GURU repository"
     emaint sync -r guru || true
@@ -681,7 +681,8 @@ EOF
         media-libs/mesa media-libs/vulkan-loader \
         dev-libs/wayland dev-libs/wayland-protocols \
         x11-base/xwayland sys-apps/xdg-desktop-portal \
-        app-shells/bash-completion
+        app-shells/bash-completion \
+        || die "Failed to install base packages"
 
     print_section "Installing Hardware Support"
 
@@ -706,7 +707,8 @@ EOF
 
     portage_emerge \
         sys-kernel/linux-firmware \
-        net-wireless/bluez
+        net-wireless/bluez \
+        || die "Failed to install hardware support packages"
 
     # ================================
     # Hostname and users
@@ -716,6 +718,7 @@ EOF
 
     read -r -p "Hostname (default: gentoo): " HOSTNAME
     HOSTNAME="${HOSTNAME:-gentoo}"
+    [[ "$HOSTNAME" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]*$ ]] || die "Invalid hostname format"
     echo "$HOSTNAME" > /etc/hostname
 
     cat > /etc/hosts <<EOF
@@ -734,10 +737,14 @@ EOF
     fi
 
     echo "Setting root password..."
-    passwd root
+    passwd root || die "Failed to set root password"
 
     read -r -p "Username: " USERNAME
-    [[ "$USERNAME" =~ ^[a-z_][a-z0-9_-]*$ ]] || die "Invalid username"
+    [[ "$USERNAME" =~ ^[a-z_][a-z0-9_-]*$ ]] || die "Invalid username format"
+
+    if id "$USERNAME" >/dev/null 2>&1; then
+        die "User '$USERNAME' already exists"
+    fi
 
     for g in wheel video audio render input; do
         getent group "$g" >/dev/null || groupadd "$g"
@@ -746,13 +753,14 @@ EOF
     EXTRA_GROUPS=""
     getent group seat >/dev/null && EXTRA_GROUPS=",seat"
 
-    useradd -m -s /bin/bash -G "wheel,video,audio,render,input${EXTRA_GROUPS}" "$USERNAME"
-    passwd "$USERNAME"
+    useradd -m -s /bin/bash -G "wheel,video,audio,render,input${EXTRA_GROUPS}" "$USERNAME" \
+        || die "Failed to create user"
+    passwd "$USERNAME" || die "Failed to set user password"
 
     install -d -m 0750 /etc/sudoers.d
     echo "%wheel ALL=(ALL:ALL) ALL" > /etc/sudoers.d/10-wheel
     chmod 0440 /etc/sudoers.d/10-wheel
-    visudo -c
+    visudo -c || die "Sudoers configuration is invalid"
 
     # ================================
     # Kernel
@@ -768,15 +776,18 @@ EOF
         gentoo-kernel)
             echo "Installing gentoo-kernel (auto-configured source kernel)..."
             echo "This will take considerable time..."
-            portage_emerge --usepkg=n --buildpkg=n sys-kernel/gentoo-kernel
+            portage_emerge --usepkg=n --buildpkg=n sys-kernel/gentoo-kernel \
+                || die "Failed to install kernel"
             ;;
         gentoo-sources)
             echo "Installing gentoo-sources (manual configuration required)..."
-            portage_emerge sys-kernel/gentoo-sources
+            portage_emerge sys-kernel/gentoo-sources \
+                || die "Failed to install kernel sources"
 
             echo
             echo "Installing kernel build tools..."
-            portage_emerge sys-apps/pciutils sys-kernel/genkernel
+            portage_emerge sys-apps/pciutils sys-kernel/genkernel \
+                || die "Failed to install build tools"
 
             echo
             echo "=============================================="
@@ -789,7 +800,7 @@ EOF
             read -r -p "Do you want to configure the kernel now? [yes/NO]: " CONFIGURE_NOW
 
             if [[ "$CONFIGURE_NOW" == "yes" ]]; then
-                cd /usr/src/linux
+                cd /usr/src/linux || die "Failed to change to kernel directory"
                 echo "Starting kernel configuration..."
                 echo "Tip: Use 'make localyesconfig' for a minimal config based on current hardware"
                 echo
