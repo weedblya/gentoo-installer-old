@@ -45,7 +45,7 @@ echo
 [[ -f "$CONF" ]] || die "Configuration file not found: $CONF"
 
 # Verify critical mounts
-[[ -d /proc ]] || die "/proc is not mounted."
+mountpoint -q /proc || die "/proc is not mounted."
 mountpoint -q /sys || die "/sys is not mounted."
 mountpoint -q /dev || die "/dev is not mounted."
 
@@ -714,7 +714,7 @@ if [[ "$PROFILE" != gentoo_base ]]; then
         echo "Configuring display manager (SDDM)..."
 
         if [[ "$INIT" == systemd ]]; then
-            if systemctl list-unit-files sddm.service >/dev/null 2>&1; then
+            if systemctl cat sddm.service >/dev/null 2>&1; then
                 systemctl enable sddm.service
                 echo "SDDM service enabled"
             else
@@ -732,7 +732,7 @@ if [[ "$PROFILE" != gentoo_base ]]; then
         echo "Configuring display manager (Ly)..."
 
         if [[ "$INIT" == systemd ]]; then
-            if systemctl list-unit-files ly.service >/dev/null 2>&1; then
+            if systemctl cat ly.service >/dev/null 2>&1; then
                 systemctl enable ly.service
                 echo "Ly service enabled"
             else
