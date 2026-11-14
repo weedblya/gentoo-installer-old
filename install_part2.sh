@@ -137,7 +137,7 @@ cat > /etc/portage/make.conf/00-installer <<EOF
 
 MAKEOPTS="-j${JOBS}"
 GRUB_PLATFORMS="efi-64"
-FEATURES="\${FEATURES-} getbinpkg binpkg-request-signature"
+FEATURES="\${FEATURES:-} getbinpkg binpkg-request-signature"
 
 # Common flags for desktop systems
 USE="pulseaudio alsa bluetooth wifi networkmanager dbus policykit"
